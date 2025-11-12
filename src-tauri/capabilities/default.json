@@ -1,0 +1,11 @@
+{
+  "identifier": "default",
+  "description": "Default permissions for the application",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "dialog:allow-open",
+    "dialog:default"
+  ]
+}

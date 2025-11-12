@@ -1,0 +1,594 @@
+/* ============================================================================
+ * YouTuDown - 原生 macOS 风格样式表
+ *
+ * 设计理念：遵循 Apple Human Interface Guidelines，提供简洁、优雅的界面
+ * 核心元素：半透明毛玻璃效果、柔和圆角、原生控件、macOS 质感
+ * ============================================================================ */
+
+/* ------------------------------------------------------------------------
+ * 全局变量定义 - 颜色系统
+ * ------------------------------------------------------------------------ */
+:root {
+  /* macOS 原生调色板 */
+  --mac-light-bg: rgba(255, 255, 255, 0.8);
+  --mac-dark-bg: rgba(45, 45, 45, 0.7);
+  --mac-blur: blur(20px);
+  --mac-border: 1px solid rgba(255, 255, 255, 0.2);
+
+  /* 颜色定义 - Light Mode */
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #e8e8ed;
+  --border-color: #d2d2d7;
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --accent-blue: #007aff;
+  --accent-blue-hover: #0051d5;
+  --accent-blue-active: #003d99;
+  --success-green: #34c759;
+  --error-red: #ff3b30;
+  --warning-orange: #ff9500;
+
+  /* 阴影效果 */
+  --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-medium: 0 2px 8px rgba(0, 0, 0, 0.08), 0 16px 48px rgba(0, 0, 0, 0.12);
+
+  /* 尺寸系统 */
+  --radius-small: 6px;
+  --radius-medium: 8px;
+  --radius-large: 12px;
+  --spacing-unit: 8px;
+}
+
+/* ------------------------------------------------------------------------
+ * 全局重置和基础样式
+ * ------------------------------------------------------------------------ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica',
+    'Arial', sans-serif;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------------------
+ * 应用容器和基础布局
+ * ------------------------------------------------------------------------ */
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--mac-light-bg);
+  backdrop-filter: var(--mac-blur);
+}
+
+.header {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(16px);
+  border-bottom: var(--mac-border);
+  padding: calc(var(--spacing-unit) * 3) calc(var(--spacing-unit) * 6);
+  text-align: center;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: calc(var(--spacing-unit) * 0.5);
+}
+
+.subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.main {
+  flex: 1;
+  padding: calc(var(--spacing-unit) * 4);
+  overflow-y: auto;
+}
+
+/* ------------------------------------------------------------------------
+ * 区块组件样式
+ * ------------------------------------------------------------------------ */
+.section {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-large);
+  padding: calc(var(--spacing-unit) * 3);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  border: var(--mac-border);
+  box-shadow: var(--shadow-light);
+  transition: all 0.2s ease;
+}
+
+.section:hover {
+  box-shadow: var(--shadow-medium);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.subsection-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: calc(var(--spacing-unit) * 1.5);
+}
+
+/* ------------------------------------------------------------------------
+ * 输入控件样式
+ * ------------------------------------------------------------------------ */
+.input-group {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 1);
+  align-items: center;
+}
+
+.input {
+  flex: 1;
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.input:hover {
+  border-color: #a0a0ac;
+}
+
+.select {
+  width: 100%;
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-medium);
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.select:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.time-input,
+.time-input-group input {
+  width: 100%;
+  padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-small);
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------------
+ * 按钮样式 - 原生 macOS 风格
+ * ------------------------------------------------------------------------ */
+.button {
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 3);
+  border: none;
+  border-radius: var(--radius-medium);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.button-primary {
+  background: linear-gradient(180deg, var(--accent-blue) 0%, var(--accent-blue) 100%);
+  color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--accent-blue-hover) 0%, var(--accent-blue-hover) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.button-primary:active:not(:disabled) {
+  background: linear-gradient(180deg, var(--accent-blue-active) 0%, var(--accent-blue-active) 100%);
+  transform: translateY(1px);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.button-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #c7c7cc;
+}
+
+.button-secondary {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.button-secondary:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #b0b0b8;
+}
+
+.button-secondary:active {
+  background: rgba(230, 230, 230, 0.7);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.button-download {
+  width: 100%;
+  padding: calc(var(--spacing-unit) * 2);
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: calc(var(--spacing-unit) * 2);
+}
+
+/* ------------------------------------------------------------------------
+ * 复选框样式
+ * ------------------------------------------------------------------------ */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  padding: calc(var(--spacing-unit) * 1) 0;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-small);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  accent-color: var(--accent-blue);
+}
+
+.checkbox:hover {
+  border-color: var(--accent-blue);
+}
+
+/* ------------------------------------------------------------------------
+ * 视频预览卡片
+ * ------------------------------------------------------------------------ */
+.video-preview {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 2);
+  padding: calc(var(--spacing-unit) * 2);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-medium);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.thumbnail {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border-color);
+}
+
+.video-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.video-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: calc(var(--spacing-unit) * 0.5);
+}
+
+.video-meta {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 2);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.meta-item strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------------------
+ * 时间段选择区域
+ * ------------------------------------------------------------------------ */
+.time-range-section {
+  margin-bottom: calc(var(--spacing-unit) * 3);
+}
+
+.time-range {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 2);
+  align-items: flex-end;
+  margin-top: calc(var(--spacing-unit) * 1);
+}
+
+.time-input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 0.5);
+}
+
+.time-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.time-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: calc(var(--spacing-unit) * 0.5);
+}
+
+/* ------------------------------------------------------------------------
+ * 质量选择和字幕部分
+ * ------------------------------------------------------------------------ */
+.quality-section,
+.subtitle-section {
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.subtitle-section button {
+  margin-left: calc(var(--spacing-unit) * 2);
+}
+
+/* ------------------------------------------------------------------------
+ * 下载路径选择
+ * ------------------------------------------------------------------------ */
+.download-settings {
+  margin-top: calc(var(--spacing-unit) * 2);
+}
+
+.output-path-group {
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: calc(var(--spacing-unit) * 0.5);
+}
+
+.path-input-group {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 1);
+}
+
+.path-input-group input {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border-color);
+}
+
+/* ------------------------------------------------------------------------
+ * 进度条组件
+ * ------------------------------------------------------------------------ */
+.progress-container {
+  margin-top: calc(var(--spacing-unit) * 2);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: calc(var(--spacing-unit) * 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue) 0%, var(--accent-blue) 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------------------------
+ * 错误消息样式
+ * ------------------------------------------------------------------------ */
+.error-message {
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  border-radius: var(--radius-medium);
+  padding: calc(var(--spacing-unit) * 2);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1);
+  color: var(--error-red);
+  font-size: 13px;
+}
+
+.error-icon {
+  font-size: 14px;
+}
+
+/* ------------------------------------------------------------------------
+ * 响应式设计
+ * ------------------------------------------------------------------------ */
+@media (max-width: 640px) {
+  .main {
+    padding: calc(var(--spacing-unit) * 2);
+  }
+
+  .input-group,
+  .time-range {
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .video-preview {
+    flex-direction: column;
+  }
+
+  .thumbnail {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* ------------------------------------------------------------------------
+ * 高级配置界面样式
+ * ------------------------------------------------------------------------ */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.button-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.button-ghost:hover {
+  color: var(--accent-blue);
+  background: rgba(0, 122, 255, 0.05);
+  border-color: rgba(0, 122, 255, 0.2);
+}
+
+.advanced-config {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 2);
+}
+
+.preset-section {
+  padding-bottom: calc(var(--spacing-unit) * 2);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.preset-buttons {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 1);
+  flex-wrap: wrap;
+}
+
+.preset-buttons .button {
+  flex: 1;
+  min-width: 80px;
+  font-size: 12px;
+  padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 2);
+}
+
+.config-row {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 0.5);
+}
+
+.config-row input[type="number"] {
+  width: 120px;
+  padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5);
+}
+
+.config-help {
+  background: rgba(0, 122, 255, 0.05);
+  border: 1px solid rgba(0, 122, 255, 0.15);
+  border-radius: var(--radius-medium);
+  padding: calc(var(--spacing-unit) * 2);
+  margin-top: calc(var(--spacing-unit) * 1);
+}
+
+.config-help p {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin-bottom: calc(var(--spacing-unit) * 1);
+}
+
+.config-help ul {
+  margin: 0;
+  padding-left: calc(var(--spacing-unit) * 2);
+}
+
+.config-help li {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: calc(var(--spacing-unit) * 0.5);
+  line-height: 1.4;
+}
+
+/* ------------------------------------------------------------------------
+ * 加载动画和过渡效果
+ * ------------------------------------------------------------------------ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.section {
+  animation: fadeIn 0.3s ease;
+}
+
+.advanced-config {
+  animation: fadeIn 0.3s ease;
+}
