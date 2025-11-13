@@ -230,6 +230,31 @@ body {
   background: #c7c7cc;
 }
 
+/* ------------------------------------------------------------------------
+ * 加载状态样式
+ * ------------------------------------------------------------------------ */
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing-unit) * 0.5);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .button-secondary {
   background: rgba(255, 255, 255, 0.7);
   color: var(--text-primary);
@@ -359,6 +384,12 @@ body {
 }
 
 .time-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: calc(var(--spacing-unit) * 0.5);
+}
+
+.quality-hint {
   font-size: 11px;
   color: var(--text-secondary);
   margin-top: calc(var(--spacing-unit) * 0.5);

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Stdio;
-use tauri::command;
+use tauri::{command, AppHandle, Emitter};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
@@ -24,6 +24,14 @@ pub struct VideoInfo {
     pub duration: f64,              // 视频时长（秒）
     pub thumbnail: String,          // 缩略图URL
     pub formats: Vec<VideoFormat>,
+    pub available_resolutions: Vec<ResolutionOption>,  // 可用分辨率选项
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResolutionOption {
+    pub height: i64,                // 分辨率高度
+    pub label: String,              // 显示标签（如 "1080p"）
+    pub format_id: String,          // 推荐的格式ID
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -270,6 +278,7 @@ fn parse_video_info(json: Value) -> Result<VideoInfo, String> {
         .to_string();
 
     let formats = parse_formats(&json);
+    let available_resolutions = extract_available_resolutions(&formats);
 
     Ok(VideoInfo {
         id,
@@ -277,6 +286,7 @@ fn parse_video_info(json: Value) -> Result<VideoInfo, String> {
         duration,
         thumbnail,
         formats,
+        available_resolutions,
     })
 }
 
@@ -340,6 +350,66 @@ fn parse_formats(json: &Value) -> Vec<VideoFormat> {
 }
 
 /***************************************************************************
+ * 提取可用分辨率选项
+ *
+ * @param formats - 视频格式列表
+ * @return Vec<ResolutionOption> - 按分辨率排序的可用选项
+ ***************************************************************************/
+
+fn extract_available_resolutions(formats: &Vec<VideoFormat>) -> Vec<ResolutionOption> {
+    let mut resolutions = std::collections::HashMap::new();
+
+    // 常见分辨率映射
+    let resolution_labels = std::collections::HashMap::from([
+        (4320, "8K"),
+        (2880, "5K"),
+        (2160, "4K"),
+        (1440, "2K"),
+        (1080, "1080p"),
+        (720, "720p"),
+        (480, "480p"),
+        (360, "360p"),
+        (240, "240p"),
+        (144, "144p"),
+    ]);
+
+    for format in formats {
+        // 只处理有视频编码的格式（排除纯音频格式）
+        if format.vcodec.as_ref().map_or(true, |vcodec| vcodec == "none") {
+            continue;
+        }
+
+        // 只处理有高度信息的格式
+        if let Some(height) = format.height {
+            // 获取分辨率标签
+            let label = resolution_labels
+                .get(&height)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| format!("{}p", height));
+
+            // 如果这个分辨率还没有被记录，或者当前格式更好
+            let entry = resolutions.entry(height).or_insert(ResolutionOption {
+                height,
+                label,
+                format_id: format.format_id.clone(),
+            });
+
+            // 优先选择有文件大小的格式
+            if format.filesize.is_some() &&
+               formats.iter().find(|f| f.format_id == entry.format_id && f.filesize.is_none()).is_some() {
+                entry.format_id = format.format_id.clone();
+            }
+        }
+    }
+
+    // 转换为向量并按分辨率降序排序
+    let mut result: Vec<ResolutionOption> = resolutions.into_values().collect();
+    result.sort_by(|a, b| b.height.cmp(&a.height));
+
+    result
+}
+
+/***************************************************************************
  * Tauri 命令 - 下载视频
  *
  * @param url - 视频URL
@@ -348,7 +418,7 @@ fn parse_formats(json: &Value) -> Vec<VideoFormat> {
  ***************************************************************************/
 
 #[command]
-pub async fn download_video(url: String, args: Vec<String>) -> Result<(), String> {
+pub async fn download_video(app: AppHandle, url: String, args: Vec<String>) -> Result<(), String> {
     println!("开始下载视频: {}", url);
     println!("参数: {:?}", args);
 
@@ -369,21 +439,35 @@ pub async fn download_video(url: String, args: Vec<String>) -> Result<(), String
     let reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();
 
+    // 克隆 AppHandle 用于异步任务
+    let app_clone = app.clone();
+
     // 异步读取标准输出（yt-dlp 进度信息）
-    // 注意：暂时注释掉事件发送，因为需要 AppHandle 引用
-    // 将来可以通过参数传递 AppHandle 来实现实时进度
     tokio::spawn(async move {
         let mut lines = reader;
+        let mut line_count = 0;
         while let Ok(Some(line)) = lines.next_line().await {
             if !line.trim().is_empty() {
-                println!("[yt-dlp] {}", line);
+                line_count += 1;
+                println!("[yt-dlp-{}] {}", line_count, line);
 
-                // 解析进度信息（暂时不发送事件）
-                // if let Some(progress) = parse_progress_line(&line) {
-                //     // 需要 AppHandle 来发送事件
-                // }
+                // 解析并发送进度信息
+                if let Some(progress) = parse_progress_line(&line) {
+                    println!("✅ 解析到进度数据: {:?}", progress);
+                    // 发送进度事件到前端
+                    match app_clone.emit("download-progress", &progress) {
+                        Ok(_) => println!("✅ 进度事件发送成功"),
+                        Err(e) => eprintln!("❌ 发送进度事件失败: {}", e),
+                    }
+                } else {
+                    // 如果这行包含进度相关信息但解析失败，输出警告
+                    if line.contains("[download]") || line.contains("%") {
+                        println!("⚠️  进度行解析失败: {}", line);
+                    }
+                }
             }
         }
+        println!("📝 标准输出读取结束，共处理 {} 行", line_count);
     });
 
     // 异步读取标准错误
@@ -403,6 +487,10 @@ pub async fn download_video(url: String, args: Vec<String>) -> Result<(), String
 
     if status.success() {
         println!("下载完成");
+        // 发送下载完成事件
+        if let Err(e) = app.emit("download-complete", ()) {
+            eprintln!("发送完成事件失败: {}", e);
+        }
         Ok(())
     } else {
         Err("下载失败: 进程返回非零退出码".to_string())
@@ -420,44 +508,70 @@ pub async fn download_video(url: String, args: Vec<String>) -> Result<(), String
  ***************************************************************************/
 
 fn parse_progress_line(line: &str) -> Option<serde_json::Value> {
-    if !line.contains("[download]") || !line.contains("%") {
+    // 增强匹配条件，支持更多格式
+    if !line.contains("[download]") && !line.contains("%") {
         return None;
     }
+
+    println!("解析进度行: {}", line); // 调试输出
 
     let parts: Vec<&str> = line.split_whitespace().collect();
-    if parts.len() < 6 {
-        return None;
-    }
 
     // 查找百分比（包含%的字段）
-    let percent_part = parts.iter().find(|p| p.contains('%'))?;
-    let percent = percent_part.trim_end_matches('%').parse::<f64>().ok()?;
+    let mut percent: Option<f64> = None;
+    for part in &parts {
+        if part.contains('%') {
+            if let Some(p) = part.trim_end_matches('%').parse::<f64>().ok() {
+                percent = Some(p);
+                break;
+            }
+        }
+    }
 
-    // 查找速度（包含 MiB/s 或 KiB/s 的字段）
+    let percent = percent?;
+
+    // 查找速度 - 支持多种格式
     let mut speed = "".to_string();
     for (i, part) in parts.iter().enumerate() {
         if *part == "at" && i + 1 < parts.len() {
             speed = parts[i + 1].to_string();
+            // 检查下一个词是否包含/s，如果是则加上
             if i + 2 < parts.len() {
-                speed.push_str(" ");
-                speed.push_str(parts[i + 2]);
+                let next_part = parts[i + 2];
+                if next_part.contains("/s") {
+                    speed.push_str(" ");
+                    speed.push_str(next_part);
+                }
             }
+            break;
+        }
+        // 也支持直接包含速度单位的词
+        if part.contains("MiB/s") || part.contains("KiB/s") || part.contains("MB/s") || part.contains("KB/s") {
+            speed = part.to_string();
             break;
         }
     }
 
-    // 查找 ETA
+    // 查找 ETA - 支持多种格式
     let mut eta = "".to_string();
     for (i, part) in parts.iter().enumerate() {
         if *part == "ETA" && i + 1 < parts.len() {
             eta = parts[i + 1].to_string();
             break;
         }
+        // 也支持直接包含时间格式的词
+        if part.chars().filter(|c| *c == ':').count() == 2 {
+            eta = part.to_string();
+            break;
+        }
     }
 
-    Some(serde_json::json!({
+    let progress = serde_json::json!({
         "percent": percent,
         "speed": speed,
         "eta": eta,
-    }))
+    });
+
+    println!("解析的进度: {}", progress); // 调试输出
+    Some(progress)
 }

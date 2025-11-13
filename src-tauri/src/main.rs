@@ -6,7 +6,6 @@
  *****************************************************************************/
 
 use tauri::Manager;
-use tauri::{AppHandle, Wry};
 
 mod commands;
 

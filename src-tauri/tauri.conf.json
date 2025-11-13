@@ -18,8 +18,14 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        "main"
+      ]
     }
   },
-  "bundle": {}
+  "bundle": {
+    "icon": [],
+    "resources": []
+  }
 }

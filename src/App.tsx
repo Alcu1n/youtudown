@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import './App.css';
 
@@ -12,6 +13,7 @@ interface VideoInfo {
   duration: number;
   thumbnail: string;
   formats: VideoFormat[];
+  available_resolutions: ResolutionOption[];
 }
 
 interface VideoFormat {
@@ -20,17 +22,16 @@ interface VideoFormat {
   width?: number;
   ext: string;
   filesize?: number;
+  vcodec?: string;
+  acodec?: string;
 }
 
-interface DownloadConfig {
-  url: string;
-  quality: string;
-  startTime?: number;
-  endTime?: number;
-  downloadSubtitles: boolean;
-  subtitleLangs: string[];
-  outputPath: string;
+interface ResolutionOption {
+  height: number;
+  label: string;
+  format_id: string;
 }
+
 
 interface AdvancedConfig {
   impersonate: string;
@@ -57,6 +58,7 @@ function App(): JSX.Element {
   const [downloadSpeed, setDownloadSpeed] = useState<string>('');
   const [downloadEta, setDownloadEta] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isLoadingInfo, setIsLoadingInfo] = useState<boolean>(false);
 
   // 高级配置状态
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
@@ -136,6 +138,49 @@ function App(): JSX.Element {
     loadConfig();
   }, [loadConfig]);
 
+  // 监听下载进度事件
+  useEffect(() => {
+    let unlistenProgress: (() => void) | undefined;
+    let unlistenComplete: (() => void) | undefined;
+
+    const setupListeners = async () => {
+      // 监听下载进度事件
+      unlistenProgress = await listen('download-progress', (event) => {
+        const progress = event.payload as any;
+        if (progress.percent !== undefined) {
+          setDownloadProgress(Math.round(progress.percent));
+        }
+        if (progress.speed) {
+          setDownloadSpeed(progress.speed);
+        }
+        if (progress.eta) {
+          setDownloadEta(progress.eta);
+        }
+      });
+
+      // 监听下载完成事件
+      unlistenComplete = await listen('download-complete', () => {
+        setDownloadProgress(100);
+        setDownloadSpeed('');
+        setDownloadEta('');
+        setIsDownloading(false);
+        setErrorMsg('下载完成！');
+      });
+    };
+
+    setupListeners();
+
+    // 清理函数
+    return () => {
+      if (unlistenProgress) {
+        unlistenProgress();
+      }
+      if (unlistenComplete) {
+        unlistenComplete();
+      }
+    };
+  }, []);
+
   /**
    * 获取视频信息
    */
@@ -146,6 +191,7 @@ function App(): JSX.Element {
     }
 
     setErrorMsg('');
+    setIsLoadingInfo(true);
     try {
       const info: VideoInfo = await invoke('get_video_info', { url });
       setVideoInfo(info);
@@ -153,6 +199,8 @@ function App(): JSX.Element {
       setEndTime(info.duration);
     } catch (error) {
       setErrorMsg(`获取视频信息失败: ${error}`);
+    } finally {
+      setIsLoadingInfo(false);
     }
   }, [url]);
 
@@ -192,17 +240,7 @@ function App(): JSX.Element {
       .padStart(2, '0')}`;
   }, []);
 
-  /**
-   * 格式化文件大小
-   */
-  const formatFileSize = useCallback((bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-  }, []);
-
+  
   /**
    * 构建 yt-dlp 命令参数
    */
@@ -220,16 +258,34 @@ function App(): JSX.Element {
     args.push('--sleep-interval', advancedConfig.sleepInterval.toString());
     args.push('--retries', advancedConfig.retries.toString());
 
-    // 质量选择
-    if (quality === '4k') {
-      args.push('-f', 'bestvideo[height<=2160]+bestaudio/best');
-    } else if (quality === '1080p') {
-      args.push('-f', 'bestvideo[height<=1080]+bestaudio/best');
-    } else if (quality === '720p') {
-      args.push('-f', 'bestvideo[height<=720]+bestaudio/best');
-    } else {
-      // best
+    // 质量选择 - 优先使用动态分辨率选择
+    if (quality === 'best') {
+      // 自动选择最佳质量
       args.push('-f', 'bestvideo+bestaudio/best');
+      console.log('使用自动最佳质量');
+    } else if (videoInfo && videoInfo.available_resolutions.length > 0) {
+      // 使用动态分辨率选择
+      const selectedResolution = videoInfo.available_resolutions.find(r => r.format_id === quality);
+      if (selectedResolution) {
+        // 直接使用格式ID，让yt-dlp自动处理音频
+        args.push('-f', quality);
+        console.log(`使用选定分辨率: ${selectedResolution.label} (${selectedResolution.height}p) - 格式ID: ${quality}`);
+      } else {
+        // 如果找不到对应的格式，使用第一个可用分辨率
+        const firstResolution = videoInfo.available_resolutions[0];
+        args.push('-f', firstResolution.format_id);
+        console.log(`未找到选定格式，使用第一个可用分辨率: ${firstResolution.label} (${firstResolution.height}p)`);
+      }
+    } else {
+      // 兼容旧的选择方式（以防万一）
+      const qualityHeight = parseInt(quality.replace(/[^\d]/g, ''));
+      if (qualityHeight > 0) {
+        args.push('-f', `bestvideo[height<=${qualityHeight}]+bestaudio/best`);
+        console.log(`使用兼容模式，最大高度: ${qualityHeight}p`);
+      } else {
+        args.push('-f', 'bestvideo+bestaudio/best');
+        console.log('使用默认最佳质量（兼容模式）');
+      }
     }
 
     // 时间段下载（核心功能）
@@ -287,10 +343,9 @@ function App(): JSX.Element {
         args,
       });
 
-      setErrorMsg('下载完成！');
+      // 注意：下载完成消息现在通过事件处理
     } catch (error) {
       setErrorMsg(`下载失败: ${error}`);
-    } finally {
       setIsDownloading(false);
     }
   }, [url, outputPath, buildCommandArgs]);
@@ -317,8 +372,19 @@ function App(): JSX.Element {
                 if (e.key === 'Enter') handleGetVideoInfo();
               }}
             />
-            <button className="button button-primary" onClick={handleGetVideoInfo}>
-              获取信息
+            <button
+              className="button button-primary"
+              onClick={handleGetVideoInfo}
+              disabled={isLoadingInfo}
+            >
+              {isLoadingInfo ? (
+                <span className="loading-spinner">
+                  <span className="spinner"></span>
+                  获取中...
+                </span>
+              ) : (
+                '获取信息'
+              )}
             </button>
           </div>
         </section>
@@ -419,10 +485,17 @@ function App(): JSX.Element {
                 onChange={(e) => setQuality(e.target.value)}
               >
                 <option value="best">自动（选择最佳）</option>
-                <option value="4k">4K (2160p)</option>
-                <option value="1080p">1080p 全高清</option>
-                <option value="720p">720p 高清</option>
+                {videoInfo.available_resolutions.map((resolution) => (
+                  <option key={resolution.height} value={resolution.format_id}>
+                    {resolution.label} ({resolution.height}p)
+                  </option>
+                ))}
               </select>
+              {videoInfo.available_resolutions.length > 0 && (
+                <p className="quality-hint">
+                  检测到 {videoInfo.available_resolutions.length} 种可用分辨率
+                </p>
+              )}
             </div>
 
             {/* 字幕选项 */}
